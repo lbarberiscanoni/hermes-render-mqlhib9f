@@ -85,3 +85,15 @@ services:
       # Get one at https://openrouter.ai/keys
       - key: OPENROUTER_API_KEY
         sync: false
+
+      # Telegram gateway. The container's `gateway run` enables Telegram
+      # automatically once these are set. Values entered in Render's UI
+      # (sync:false), never committed.
+      #   - TELEGRAM_BOT_TOKEN: from @BotFather (/newbot)
+      #   - TELEGRAM_ALLOWED_USERS: your numeric Telegram user id (from
+      #     @userinfobot), comma-separated for multiple. REQUIRED — without it
+      #     anyone who finds the bot gets the agent's terminal access.
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_ALLOWED_USERS
+        sync: false
