@@ -76,3 +76,12 @@ services:
       # account role behind the key determines what the agent can do.
       - key: RENDER_MCP_API_KEY
         sync: false
+
+      # OpenRouter API key for the LLM backend. Paired with the model block
+      # seeded into config.yaml by patch-config.py (openrouter / z-ai/glm-4.5-air),
+      # so the agent boots ready to chat without any dashboard setup.
+      # sync:false keeps the secret out of this public repo — enter the value
+      # in Render's UI (the Blueprint env field, or the service Environment tab).
+      # Get one at https://openrouter.ai/keys
+      - key: OPENROUTER_API_KEY
+        sync: false

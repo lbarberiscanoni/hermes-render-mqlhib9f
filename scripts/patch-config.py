@@ -45,6 +45,16 @@ RENDER_SKILL_DIRS = (
 RENDER_MCP_URL = "https://mcp.render.com/mcp"
 RENDER_MCP_AUTH = "Bearer ${RENDER_MCP_API_KEY}"
 
+# Default LLM model for this deploy. Seeded only when config.yaml has no
+# `model` block yet (insert-only, like everything else here), so a user who
+# later picks a different model from the dashboard keeps their choice.
+# The OPENROUTER_API_KEY value is supplied via a Render env var (sync:false),
+# never committed to this repo.
+DEFAULT_MODEL = {
+    "provider": "openrouter",
+    "default": "z-ai/glm-4.5-air",
+}
+
 def load_config(path: Path) -> dict:
     if not path.exists():
         return {}
@@ -88,6 +98,18 @@ def ensure_render_mcp(config: dict) -> bool:
     if "render" in mcp_servers:
         return False
     mcp_servers["render"] = _render_entry()
+    return True
+
+
+def ensure_model(config: dict) -> bool:
+    """Insert the default model block if no `model` config exists.
+
+    Returns True if changed. Insert-only: a pre-existing `model` value
+    (e.g. set from the dashboard) is left untouched.
+    """
+    if config.get("model") is not None:
+        return False
+    config["model"] = dict(DEFAULT_MODEL)
     return True
 
 
@@ -140,11 +162,16 @@ def main() -> int:
     path = Path(sys.argv[1])
     path.parent.mkdir(parents=True, exist_ok=True)
     config = load_config(path)
+    changed_model = ensure_model(config)
     changed_mcp = ensure_render_mcp(config)
     added_dirs = ensure_external_skill_dirs(config)
-    if changed_mcp or added_dirs:
+    if changed_model or changed_mcp or added_dirs:
         save_config(path, config)
         parts = []
+        if changed_model:
+            parts.append(
+                f"model={DEFAULT_MODEL['provider']}:{DEFAULT_MODEL['default']}"
+            )
         if changed_mcp:
             parts.append("mcp_servers.render")
         for dir_path in added_dirs:
