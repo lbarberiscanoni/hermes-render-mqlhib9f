@@ -78,7 +78,7 @@ services:
         sync: false
 
       # OpenRouter API key for the LLM backend. Paired with the model block
-      # seeded into config.yaml by patch-config.py (openrouter / z-ai/glm-4.5-air),
+      # seeded into config.yaml by patch-config.py (openrouter / z-ai/glm-4.7-flash),
       # so the agent boots ready to chat without any dashboard setup.
       # sync:false keeps the secret out of this public repo — enter the value
       # in Render's UI (the Blueprint env field, or the service Environment tab).

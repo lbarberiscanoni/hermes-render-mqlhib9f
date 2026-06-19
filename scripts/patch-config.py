@@ -45,15 +45,23 @@ RENDER_SKILL_DIRS = (
 RENDER_MCP_URL = "https://mcp.render.com/mcp"
 RENDER_MCP_AUTH = "Bearer ${RENDER_MCP_API_KEY}"
 
-# Default LLM model for this deploy. Seeded only when config.yaml has no
-# `model` block yet (insert-only, like everything else here), so a user who
-# later picks a different model from the dashboard keeps their choice.
-# The OPENROUTER_API_KEY value is supplied via a Render env var (sync:false),
-# never committed to this repo.
+# Default LLM model for this deploy. Seeded when config.yaml has no `model`
+# block yet. The OPENROUTER_API_KEY value is supplied via a Render env var
+# (sync:false), never committed to this repo.
 DEFAULT_MODEL = {
     "provider": "openrouter",
-    "default": "z-ai/glm-4.5-air",
+    "default": "z-ai/glm-4.7-flash",
 }
+
+# Defaults this repo has baked in the past. Because config.yaml lives on a
+# persistent disk, simply bumping DEFAULT_MODEL would NOT take effect on an
+# existing deploy (the model block already exists). So when the on-disk model
+# still matches one of these old baked defaults, we upgrade it in place to
+# DEFAULT_MODEL on redeploy. A model the user set to anything NOT listed here
+# is treated as a deliberate choice and left untouched.
+SUPERSEDED_DEFAULTS = (
+    {"provider": "openrouter", "default": "z-ai/glm-4.5-air"},
+)
 
 def load_config(path: Path) -> dict:
     if not path.exists():
@@ -101,16 +109,33 @@ def ensure_render_mcp(config: dict) -> bool:
     return True
 
 
-def ensure_model(config: dict) -> bool:
-    """Insert the default model block if no `model` config exists.
+def _matches(model: dict, ref: dict) -> bool:
+    return (
+        isinstance(model, dict)
+        and model.get("provider") == ref["provider"]
+        and model.get("default") == ref["default"]
+    )
 
-    Returns True if changed. Insert-only: a pre-existing `model` value
-    (e.g. set from the dashboard) is left untouched.
+
+def ensure_model(config: dict) -> bool:
+    """Seed or upgrade the `model` block. Returns True if changed.
+
+    - No model yet  -> insert DEFAULT_MODEL.
+    - Model still equals a previously-baked default (SUPERSEDED_DEFAULTS)
+      -> upgrade in place to DEFAULT_MODEL (preserving any extra keys).
+    - Any other (user-chosen) model -> leave untouched.
     """
-    if config.get("model") is not None:
+    current = config.get("model")
+    if current is None:
+        config["model"] = dict(DEFAULT_MODEL)
+        return True
+    if _matches(current, DEFAULT_MODEL):
         return False
-    config["model"] = dict(DEFAULT_MODEL)
-    return True
+    if any(_matches(current, old) for old in SUPERSEDED_DEFAULTS):
+        current["provider"] = DEFAULT_MODEL["provider"]
+        current["default"] = DEFAULT_MODEL["default"]
+        return True
+    return False
 
 
 def ensure_external_skill_dirs(config: dict) -> list[str]:
